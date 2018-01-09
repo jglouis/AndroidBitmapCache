@@ -4,4 +4,5 @@
     <string name="na">NA</string>
     <string name="load_image">Load Image</string>
     <string name="rotate_90">Rotate 90</string>
+    <string name="some_random_image">Some random image</string>
 </resources>

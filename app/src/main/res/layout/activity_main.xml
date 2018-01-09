@@ -29,6 +29,16 @@
         app:layout_constraintStart_toEndOf="@id/labelMemoryClass"
         app:layout_constraintTop_toTopOf="parent"/>
 
+    <TextView
+        android:id="@+id/messageTrimMemory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text=""
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/labelMemoryClass"/>
+
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="256dp"
@@ -41,7 +51,8 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@color/colorAccent"/>
+        app:srcCompat="@color/colorAccent"
+        android:contentDescription="@string/some_random_image"/>
 
     <Button
         android:id="@+id/button"
@@ -64,10 +75,11 @@
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
-        android:text="@string/rotate_90"
         android:onClick="rotate90"
+        android:text="@string/rotate_90"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"/>
+
 
 </android.support.constraint.ConstraintLayout>
