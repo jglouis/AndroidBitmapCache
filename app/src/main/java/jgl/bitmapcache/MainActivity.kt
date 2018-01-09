@@ -59,10 +59,10 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2 {
     fun getMemoryInfo(view: View) {
         val outInfo = ActivityManager.MemoryInfo()
         activityManager?.getMemoryInfo(outInfo)
-        available_memory.text = String.format(getString(R.string.available_memory) , Util.humanReadableByteCount(outInfo.availMem, true))
+        available_memory.text = String.format(getString(R.string.available_memory) , humanReadableByteCount(outInfo.availMem, true))
         low_memory.text = if (outInfo.lowMemory) getString(R.string.memory_low) else getString(R.string.memory_ok)
-        threshold.text = String.format(getString(R.string.memory_info_threshold), Util.humanReadableByteCount(outInfo.threshold, true))
-        total_memory.text = String.format(getString(R.string.total_memory_kernel), Util.humanReadableByteCount(outInfo.totalMem, true))
+        threshold.text = String.format(getString(R.string.memory_info_threshold), humanReadableByteCount(outInfo.threshold, true))
+        total_memory.text = String.format(getString(R.string.total_memory_kernel), humanReadableByteCount(outInfo.totalMem, true))
     }
 
     override fun onTrimMemory(level: Int) {
