@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">BitmapCache</string>
+    <string name="memory_class">Memory class</string>
+    <string name="na">NA</string>
+    <string name="load_image">Load Image</string>
+    <string name="rotate_90">Rotate 90</string>
+</resources>
