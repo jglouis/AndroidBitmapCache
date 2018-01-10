@@ -6,10 +6,12 @@
     <string name="rotate_90">Rotate 90</string>
     <string name="some_random_image">Some random image</string>
     <string name="fill_memory">Fill Memory</string>
+    <string name="fill_memory_using_cache">Fill Memory Using Cache</string>
     <string name="memory_info">Memory Info</string>
     <string name="available_memory">Available memory %s</string>
     <string name="memory_ok">Memory OK</string>
     <string name="memory_low">Memory low</string>
     <string name="total_memory_kernel">Total memory accessible by the kernel: %s</string>
     <string name="memory_info_threshold">%s of memory threshold</string>
+    <string name="scale_x2">Scale x2</string>
 </resources>

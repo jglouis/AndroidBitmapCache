@@ -4,9 +4,6 @@ import android.app.ActivityManager
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.drawable.Drawable
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -30,36 +27,47 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2 {
 
     @Suppress("UNUSED_PARAMETER")
     fun loadImage(view: View) {
-        val inputStream = assets.open("aps_icon_512.png")
-        val drawable = Drawable.createFromStream(inputStream, null)
-        imageView.setImageDrawable(drawable)
+        val bitmap = getAssetBitmapMem(fileName)
+        imageView.setImageBitmap(bitmap)
     }
 
     @Suppress("UNUSED_PARAMETER")
     fun fillMemory(view: View) {
-        val inputStream = assets.open("aps_icon_512.png")
-        val bitmap = BitmapFactory.decodeStream(inputStream)
-        bitmapBucket.add(bitmap)
+        val bitmap = getAssetBitmap(this, fileName) // No memoization
+        if (bitmap != null) {
+            bitmapBucket.add(bitmap)
+        } else {
+            Log.e(TAG, "Bitmap is null!")
+        }
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    fun fillMemoryUsingCache(view: View) {
+        val bitmap = getAssetBitmapMem(fileName)
+        if (bitmap != null) {
+            bitmapBucket.add(bitmap)
+        } else {
+            Log.e(TAG, "Bitmap is null!")
+        }
     }
 
     @Suppress("UNUSED_PARAMETER")
     fun rotate90(view: View) {
-        val inputStream = assets.open("aps_icon_512.png")
-        val bitmapOriginal = BitmapFactory.decodeStream(inputStream)
-        val bitmapResult = Bitmap.createBitmap(bitmapOriginal.height, bitmapOriginal.width, Bitmap.Config.ARGB_8888)
-        val tempCanvas = Canvas(bitmapResult)
-        val pivotX = bitmapOriginal.width / 2f
-        val pivotY = bitmapOriginal.height / 2f
-        tempCanvas.rotate(90f, pivotX, pivotY)
-        tempCanvas.drawBitmap(bitmapOriginal, 0f, 0f, null)
-        imageView.setImageBitmap(bitmapResult)
+        val bitmap = getAssetBitmapMem(fileName)?.rotateMem(90f)
+        imageView.setImageBitmap(bitmap)
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    fun scaleTimes2(view: View) {
+        val bitmap = getAssetBitmapMem(fileName)?.scaleMem(2f)
+        imageView.setImageBitmap(bitmap)
     }
 
     @Suppress("UNUSED_PARAMETER")
     fun getMemoryInfo(view: View) {
         val outInfo = ActivityManager.MemoryInfo()
         activityManager?.getMemoryInfo(outInfo)
-        available_memory.text = String.format(getString(R.string.available_memory) , humanReadableByteCount(outInfo.availMem, true))
+        available_memory.text = String.format(getString(R.string.available_memory), humanReadableByteCount(outInfo.availMem, true))
         low_memory.text = if (outInfo.lowMemory) getString(R.string.memory_low) else getString(R.string.memory_ok)
         threshold.text = String.format(getString(R.string.memory_info_threshold), humanReadableByteCount(outInfo.threshold, true))
         total_memory.text = String.format(getString(R.string.total_memory_kernel), humanReadableByteCount(outInfo.totalMem, true))
@@ -84,6 +92,7 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2 {
     companion object {
         val TAG = MainActivity::class.java.simpleName!!
         val bitmapBucket = ArrayList<Bitmap>()
+        const val fileName = "aps_icon_512.png"
     }
 }
 

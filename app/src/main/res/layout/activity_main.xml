@@ -92,8 +92,27 @@
             android:layout_marginBottom="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginStart="8dp"
+            android:onClick="scaleTimes2"
+            android:text="@string/scale_x2"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginStart="8dp"
             android:onClick="fillMemory"
             android:text="@string/fill_memory"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginStart="8dp"
+            android:onClick="fillMemoryUsingCache"
+            android:text="@string/fill_memory_using_cache"/>
+
 
         <Button
             android:layout_width="match_parent"
