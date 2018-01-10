@@ -40,11 +40,19 @@
         app:layout_constraintTop_toBottomOf="@+id/labelMemoryClass"/>
 
     <include layout="@layout/memory_info"
+             android:id="@+id/memory_info"
              android:layout_marginStart="8dp"
              android:layout_marginTop="8dp"
              android:layout_width="wrap_content"
              android:layout_height="wrap_content"
              app:layout_constraintTop_toBottomOf="@id/messageTrimMemory"/>
+
+    <include layout="@layout/cache_info"
+             android:layout_marginStart="8dp"
+             android:layout_marginTop="8dp"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+             app:layout_constraintTop_toBottomOf="@id/memory_info"/>
 
     <ImageView
         android:id="@+id/imageView"
@@ -62,11 +70,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        >
+        app:layout_constraintEnd_toEndOf="parent">
 
         <Button
             android:layout_width="match_parent"

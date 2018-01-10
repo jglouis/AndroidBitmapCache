@@ -14,4 +14,5 @@
     <string name="total_memory_kernel">Total memory accessible by the kernel: %s</string>
     <string name="memory_info_threshold">%s of memory threshold</string>
     <string name="scale_x2">Scale x2</string>
+    <string name="cache_info">Cache Info</string>
 </resources>

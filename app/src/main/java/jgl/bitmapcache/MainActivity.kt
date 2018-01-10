@@ -9,9 +9,15 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.cache_info.*
 import kotlinx.android.synthetic.main.memory_info.*
 
-class MainActivity : AppCompatActivity(), ComponentCallbacks2 {
+class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.OnChangeListener {
+    override fun onBitmapLruCacheChange(numBitmap: Int, totalSize: Long) {
+        cacheInfoNumElements.text = String.format("%d Bitmap in cache", numBitmap)
+        cacheInfoTotalAllocatedMemory.text =
+                String.format("Total allocated memory: %s", humanReadableByteCount(totalSize, true))
+    }
 
     private val activityManager: ActivityManager? by lazy {
         val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
@@ -21,6 +27,13 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2 {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val cache = resetCache((activityManager?.memoryClass?.times(1024*1024/2))?.toLong() ?: 1024 * 1024)
+        cache.registerListener(this)
+
+        cacheInfoNumElements.text = String.format("%d Bitmap in library", cache.size)
+        cacheInfoTotalAllocatedMemory.text =
+                String.format("Total allocated memory: %s", humanReadableByteCount(cache.bitmapAllocationByteCount, true))
 
         memoryClass.text = activityManager?.memoryClass.toString()
     }
@@ -33,21 +46,25 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2 {
 
     @Suppress("UNUSED_PARAMETER")
     fun fillMemory(view: View) {
-        val bitmap = getAssetBitmap(this, fileName) // No memoization
-        if (bitmap != null) {
-            bitmapBucket.add(bitmap)
-        } else {
-            Log.e(TAG, "Bitmap is null!")
+        for (i in 1..150) {
+            val bitmap = getAssetBitmap(this, fileName) // No memoization
+            if (bitmap != null) {
+                bitmapBucket.add(bitmap)
+            } else {
+                Log.e(TAG, "Bitmap is null!")
+            }
         }
     }
 
     @Suppress("UNUSED_PARAMETER")
     fun fillMemoryUsingCache(view: View) {
-        val bitmap = getAssetBitmapMem(fileName)
-        if (bitmap != null) {
-            bitmapBucket.add(bitmap)
-        } else {
-            Log.e(TAG, "Bitmap is null!")
+        for (i in 1..150) {
+            val bitmap = getAssetBitmapMem(fileName)
+            if (bitmap != null) {
+                bitmapBucket.add(bitmap)
+            } else {
+                Log.e(TAG, "Bitmap is null!")
+            }
         }
     }
 
@@ -74,7 +91,7 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2 {
     }
 
     override fun onTrimMemory(level: Int) {
-        var msg = "Unrecognized level"
+        var msg = "Unrecognized onTrimMemory level"
         when (level) {
             ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> msg = "TRIM_MEMORY_BACKGROUND"
             ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> msg = "TRIM_MEMORY_COMPLETE"

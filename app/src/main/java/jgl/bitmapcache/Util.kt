@@ -1,5 +1,8 @@
 package jgl.bitmapcache
 
+import android.content.Context
+import android.widget.Toast
+
 /**
  * Created by JGLouis on 09/01/2018.
  */
@@ -10,4 +13,8 @@ fun humanReadableByteCount(bytes: Long, si: Boolean): String {
     val exp = (Math.log(bytes.toDouble()) / Math.log(unit.toDouble())).toInt()
     val pre = (if (si) "kMGTPE" else "KMGTPE")[exp - 1] + if (si) "" else "i"
     return String.format("%.1f %sB", bytes / Math.pow(unit.toDouble(), exp.toDouble()), pre)
+}
+
+fun Context.toast(msg: String, isShort: Boolean = true) {
+    Toast.makeText(this, msg, if (isShort) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
 }

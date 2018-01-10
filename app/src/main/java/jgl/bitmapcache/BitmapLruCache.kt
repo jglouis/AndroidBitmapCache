@@ -8,21 +8,20 @@ import android.util.Log
 import java.io.IOException
 import java.io.InputStream
 import java.util.*
+import kotlin.collections.HashSet
 
 /**
  * Created by JGLouis on 09/01/2018.
  */
+
+const val TAG = "BitmapLruCache"
 
 class BitmapLruCache(private val MAX_SIZE_BYTE: Long) {
 
     private val indexedBitmaps = HashMap<String, Bitmap?>()
     private val lru = ArrayDeque<String>()
     private var totalByteSize = 0L
-
-
-    companion object {
-        val TAG = BitmapLruCache::class.java.simpleName
-    }
+    private val listeners = HashSet<OnChangeListener>()
 
     private fun put(key: String, value: Bitmap): Bitmap {
         // Check size
@@ -45,6 +44,7 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Long) {
             indexedBitmaps[key] = value
             lru.push(key)
             totalByteSize += value.allocationByteCount
+            listeners.forEach { it.onBitmapLruCacheChange(indexedBitmaps.size, totalByteSize) }
         }
         return value
     }
@@ -71,14 +71,40 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Long) {
             value
         }
     }
+
+    fun registerListener(listener: OnChangeListener) {
+        listeners += listener
+    }
+
+    fun removeListener(listener: OnChangeListener) {
+        listeners -= listener
+    }
+
+    val bitmapAllocationByteCount: Long
+        get() = totalByteSize
+
+    val size: Int
+        get() = indexedBitmaps.size
+
+    interface OnChangeListener {
+        fun onBitmapLruCacheChange(numBitmap: Int, totalSize: Long)
+    }
 }
 
-val cache = BitmapLruCache(10 * 1024 * 1024L) // 10Mb
+
+private var cache = BitmapLruCache(10 * 1024 * 1024L) // 10Mb
+fun resetCache(MAX_SIZE_BYTE: Long) : BitmapLruCache  {
+    cache = BitmapLruCache(MAX_SIZE_BYTE)
+    return cache
+}
 
 // Memoization of bitmaps
 class MemoizeBitmap<in T, in U>(private val func: (T, U) -> Bitmap?) : (T, U) -> Bitmap? {
-    override fun invoke(p1: T, p2: U) =
-            cache.getOrPut(String.format("%s_%d_%d", func, p1?.hashCode(), p2?.hashCode()), { func(p1, p2) })
+    override fun invoke(p1: T, p2: U) : Bitmap? {
+        val key = String.format("%s_%d_%d", func, p1?.hashCode(), p2?.hashCode())
+        Log.d(TAG, String.format("Memoize Bitmap as key %s", key))
+        return cache.getOrPut(key, { func(p1, p2) })
+    }
 }
 
 fun Context.getAssetBitmapMem(path: String): Bitmap? {
@@ -87,7 +113,7 @@ fun Context.getAssetBitmapMem(path: String): Bitmap? {
 
 fun getAssetBitmap(context: Context, path: String): Bitmap? {
     return try {
-        Log.d("DEBUG", "Loading from assets")
+        Log.d(TAG, "Loading from assets")
         context.assets.open(path).toBitmap()
     } catch (e: IOException) {
         Log.e("getAssetBitmap", "", e)
@@ -104,7 +130,7 @@ fun Bitmap.rotateMem(degrees: Float): Bitmap {
 }
 
 fun rotate(bitmap: Bitmap, degrees: Float): Bitmap {
-    Log.d("DEBUG", "rotate")
+    Log.d(TAG, "rotate")
     val bitmapResult = Bitmap.createBitmap(bitmap.height, bitmap.width, Bitmap.Config.ARGB_8888)
     val tempCanvas = Canvas(bitmapResult)
     val pivotX = bitmap.width / 2f
@@ -119,7 +145,7 @@ fun Bitmap.scaleMem(scalingFactor: Float): Bitmap {
 }
 
 fun scale(bitmap: Bitmap, scalingFactor: Float): Bitmap {
-    Log.d("DEBUG", "scale")
+    Log.d(TAG, "scale")
     val bitmapResult = Bitmap.createBitmap(bitmap.height, bitmap.width, Bitmap.Config.ARGB_8888)
     val tempCanvas = Canvas(bitmapResult)
     tempCanvas.scale(scalingFactor, scalingFactor)
