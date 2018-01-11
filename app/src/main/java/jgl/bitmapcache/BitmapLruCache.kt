@@ -4,11 +4,16 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
 import android.util.Log
 import android.util.LruCache
 import java.io.IOException
 import java.io.InputStream
+import java.lang.ref.SoftReference
+import java.util.*
 import kotlin.collections.HashSet
+import android.os.Build
+
 
 /**
  * Created by JGLouis on 09/01/2018.
@@ -21,12 +26,26 @@ const val MEMORY_SAFETY_THRESHOLD = 1024 * 1024 // 1 MiB
 
 class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
 
-    private val lruCache = object : LruCache<String, Bitmap>(MAX_SIZE_BYTE) {
-        override fun sizeOf(key: String, value: Bitmap): Int {
-            return value.allocationByteCount
+    private val listeners = HashSet<OnChangeListener>()
+
+    // Keep evicted Bitmap with a WeakReference for potential reuse
+    private val reusableBitmaps = Collections.synchronizedSet(HashSet<SoftReference<Bitmap>>())
+
+    private val lruCache = object : LruCache<String, BitmapDrawable>(MAX_SIZE_BYTE) {
+        override fun sizeOf(key: String?, value: BitmapDrawable?): Int {
+            return value?.bitmap?.allocationByteCount ?: 0
+        }
+
+        override fun entryRemoved(evicted: Boolean, key: String?, oldValue: BitmapDrawable?, newValue: BitmapDrawable?) {
+            if (oldValue is RecyclingBitmapDrawable) {
+                oldValue.setIsCached(false)
+            } else {
+                if (oldValue != null) {
+                    reusableBitmaps.add(SoftReference<Bitmap>(oldValue.bitmap))
+                }
+            }
         }
     }
-    private val listeners = HashSet<OnChangeListener>()
 
     private fun put(key: String, value: Bitmap): Bitmap {
         if (value.allocationByteCount > MAX_SIZE_BYTE) {
@@ -34,14 +53,14 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
                     humanReadableByteCount(value.allocationByteCount.toLong(), false),
                     humanReadableByteCount(MAX_SIZE_BYTE.toLong(), false)))
         } else {
-            lruCache.put(key, value)
+            lruCache.put(key, BitmapDrawable(value))
             listeners.forEach { it.onBitmapLruCacheChange() }
         }
         return value
     }
 
     private fun get(key: String): Bitmap? {
-        return lruCache.get(key)
+        return lruCache.get(key)?.bitmap
     }
 
     fun getOrPut(key: String, defaultValue: () -> Bitmap?): Bitmap? {
@@ -55,6 +74,23 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
         } else {
             value
         }
+    }
+
+    fun getBitmapFromReusableSet(options: BitmapFactory.Options): Bitmap? {
+        var bitmap: Bitmap? = null
+        synchronized(reusableBitmaps) {
+            for (item in reusableBitmaps) {
+                val bmp = item.get()
+                if (bmp?.isMutable == true) {
+                    if (canUseForInBitmap(bmp, options)) {
+                        bitmap = bmp
+                        reusableBitmaps.remove(item)
+                        break
+                    }
+                }
+            }
+        }
+        return bitmap
     }
 
     fun registerListener(listener: OnChangeListener) {
@@ -133,7 +169,12 @@ fun InputStream.toBitmap(encoding: Bitmap.Config): Bitmap? {
         null
     } else {
         options.inJustDecodeBounds = false
+        options.inMutable = true
         this.reset()
+        cache.getBitmapFromReusableSet(options).let {
+            options.inBitmap = it
+            Log.d(TAG, "Reusing an evicted bitmap")
+        }
         BitmapFactory.decodeStream(this, null, options)
     }
 }
@@ -167,11 +208,30 @@ fun scale(bitmap: Bitmap, scalingFactor: Float): Bitmap {
 }
 
 fun getBytesPerPixel(config: Bitmap.Config): Int {
-    return when(config) {
+    return when (config) {
         Bitmap.Config.ARGB_8888 -> 4
         Bitmap.Config.RGB_565 -> 2
         Bitmap.Config.ARGB_4444 -> 2
         Bitmap.Config.ALPHA_8 -> 1
         else -> 1
     }
+}
+
+fun canUseForInBitmap(
+        candidate: Bitmap, targetOptions: BitmapFactory.Options): Boolean {
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        // From Android 4.4 (KitKat) onward we can re-use if the byte size of
+        // the new bitmap is smaller than the reusable bitmap candidate
+        // allocation byte count.
+        val width = targetOptions.outWidth / targetOptions.inSampleSize
+        val height = targetOptions.outHeight / targetOptions.inSampleSize
+        val byteCount = width * height * getBytesPerPixel(candidate.config)
+        return byteCount <= candidate.allocationByteCount
+    }
+
+    // On earlier versions, the dimensions must match exactly and the inSampleSize must be 1
+    return (candidate.width == targetOptions.outWidth
+            && candidate.height == targetOptions.outHeight
+            && targetOptions.inSampleSize == 1)
 }
