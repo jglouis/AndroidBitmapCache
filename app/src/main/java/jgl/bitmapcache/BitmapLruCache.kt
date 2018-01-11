@@ -167,14 +167,11 @@ fun scale(bitmap: Bitmap, scalingFactor: Float): Bitmap {
 }
 
 fun getBytesPerPixel(config: Bitmap.Config): Int {
-    if (config === Bitmap.Config.ARGB_8888) {
-        return 4
-    } else if (config === Bitmap.Config.RGB_565) {
-        return 2
-    } else if (config === Bitmap.Config.ARGB_4444) {
-        return 2
-    } else if (config === Bitmap.Config.ALPHA_8) {
-        return 1
+    return when(config) {
+        Bitmap.Config.ARGB_8888 -> 4
+        Bitmap.Config.RGB_565 -> 2
+        Bitmap.Config.ARGB_4444 -> 2
+        Bitmap.Config.ALPHA_8 -> 1
+        else -> 1
     }
-    return 1
 }
