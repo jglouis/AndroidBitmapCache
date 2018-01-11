@@ -11,12 +11,12 @@
         android:textAppearance="@style/TextAppearance.AppCompat.Subhead"/>
 
     <TextView
-        android:id="@+id/available_memory"
+        android:id="@+id/availableMemory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
     <TextView
-        android:id="@+id/low_memory"
+        android:id="@+id/lowMemory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
@@ -26,7 +26,12 @@
         android:layout_height="wrap_content"/>
 
     <TextView
-        android:id="@+id/total_memory"
+        android:id="@+id/totalMemory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/heapMemory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 

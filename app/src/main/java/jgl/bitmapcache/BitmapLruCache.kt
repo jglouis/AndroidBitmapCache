@@ -32,7 +32,7 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
                     humanReadableByteCount(MAX_SIZE_BYTE.toLong(), true)))
         } else {
             lruCache.put(key, value)
-            listeners.forEach { it.onBitmapLruCacheChange(size, bitmapAllocationByteCount) }
+            listeners.forEach { it.onBitmapLruCacheChange() }
         }
         return value
     }
@@ -72,7 +72,7 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
         get() = lruCache.putCount() - lruCache.evictionCount()
 
     interface OnChangeListener {
-        fun onBitmapLruCacheChange(numBitmap: Int, totalSize: Int)
+        fun onBitmapLruCacheChange()
     }
 }
 

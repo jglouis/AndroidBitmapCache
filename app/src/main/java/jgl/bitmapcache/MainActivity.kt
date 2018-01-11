@@ -13,12 +13,9 @@ import kotlinx.android.synthetic.main.cache_info.*
 import kotlinx.android.synthetic.main.memory_info.*
 
 class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.OnChangeListener {
-    override fun onBitmapLruCacheChange(numBitmap: Int, totalSize: Int) {
-        cacheInfoNumElements.text = String.format("%d Bitmap in cache", numBitmap)
-        cacheInfoTotalAllocatedMemory.text =
-                String.format("%s / %s",
-                        humanReadableByteCount(totalSize.toLong(), true),
-                        humanReadableByteCount(cache.maxBitmapAllocationCount.toLong(), true))
+    override fun onBitmapLruCacheChange() {
+        updateCacheInfo()
+        updateMemoryInfo()
     }
 
     private val activityManager: ActivityManager? by lazy {
@@ -30,15 +27,22 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // memory class (half of it is dedicated to Bitmap cache
+        memoryClass.text = activityManager?.memoryClass.toString()
 
+        // Cache info
+        updateCacheInfo()
 
-        cacheInfoNumElements.text = String.format("%d Bitmap in library", cache.size)
+        // Memory info
+        updateMemoryInfo()
+    }
+
+    private fun updateCacheInfo() {
+        cacheInfoNumElements.text = String.format(resources.getQuantityString(R.plurals.cache_bitmap_count, cache.size), cache.size)
         cacheInfoTotalAllocatedMemory.text =
                 String.format("%s / %s",
-                        humanReadableByteCount(cache.bitmapAllocationByteCount.toLong(), true),
-                        humanReadableByteCount(cache.maxBitmapAllocationCount.toLong(), true))
-
-        memoryClass.text = activityManager?.memoryClass.toString()
+                        humanReadableByteCount(cache.bitmapAllocationByteCount.toLong(), false),
+                        humanReadableByteCount(cache.maxBitmapAllocationCount.toLong(), false))
     }
 
     private val cache :BitmapLruCache by lazy {
@@ -98,15 +102,17 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
         i += 1
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    fun getMemoryInfo(view: View) {
+    private fun updateMemoryInfo() {
         val outInfo = ActivityManager.MemoryInfo()
         activityManager?.getMemoryInfo(outInfo)
-        available_memory.text = String.format(getString(R.string.available_memory), humanReadableByteCount(outInfo.availMem, true))
-        low_memory.text = if (outInfo.lowMemory) getString(R.string.memory_low) else getString(R.string.memory_ok)
-        threshold.text = String.format(getString(R.string.memory_info_threshold), humanReadableByteCount(outInfo.threshold, true))
-        total_memory.text = String.format(getString(R.string.total_memory_kernel), humanReadableByteCount(outInfo.totalMem, true))
+        availableMemory.text = String.format(getString(R.string.available_memory), humanReadableByteCount(outInfo.availMem, false))
+        lowMemory.text = if (outInfo.lowMemory) getString(R.string.memory_low) else getString(R.string.memory_ok)
+        threshold.text = String.format(getString(R.string.memory_info_threshold), humanReadableByteCount(outInfo.threshold, false))
+        totalMemory.text = String.format(getString(R.string.total_memory_kernel), humanReadableByteCount(outInfo.totalMem, false))
 
+        heapMemory.text = String.format(getString(R.string.runtime_heap),
+                humanReadableByteCount(Runtime.getRuntime().totalMemory(), false),
+                humanReadableByteCount(Runtime.getRuntime().maxMemory(), false))
     }
 
     override fun onTrimMemory(level: Int) {

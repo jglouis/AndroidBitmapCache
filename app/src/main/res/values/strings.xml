@@ -15,4 +15,10 @@
     <string name="memory_info_threshold">%s of memory threshold</string>
     <string name="scale_x2">Scale x2</string>
     <string name="cache_info">Cache Info</string>
+    <string name="runtime_heap">Heap: %s / %s</string>
+    <plurals name="cache_bitmap_count">
+        <item quantity="zero">%d Bitmap in cache</item>
+        <item quantity="one">%d Bitmap in cache</item>
+        <item quantity="other">%d Bitmaps in cache</item>
+    </plurals>
 </resources>
