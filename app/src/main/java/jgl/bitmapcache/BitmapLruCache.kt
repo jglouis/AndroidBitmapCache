@@ -5,9 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.util.Log
+import android.util.LruCache
 import java.io.IOException
 import java.io.InputStream
-import java.util.*
 import kotlin.collections.HashSet
 
 /**
@@ -16,49 +16,29 @@ import kotlin.collections.HashSet
 
 const val TAG = "BitmapLruCache"
 
-class BitmapLruCache(private val MAX_SIZE_BYTE: Long) {
+class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
 
-    private val indexedBitmaps = HashMap<String, Bitmap>()
-    private val lru = ArrayDeque<String>()
-    private var totalByteSize = 0L
+    private val lruCache = object : LruCache<String, Bitmap>(MAX_SIZE_BYTE) {
+        override fun sizeOf(key: String, value: Bitmap): Int {
+            return value.allocationByteCount
+        }
+    }
     private val listeners = HashSet<OnChangeListener>()
 
     private fun put(key: String, value: Bitmap): Bitmap {
-        // Check size
         if (value.allocationByteCount > MAX_SIZE_BYTE) {
             Log.e(TAG, String.format("Bitmap (%s) does not fit in cache (%s)",
                     humanReadableByteCount(value.allocationByteCount.toLong(), true),
-                    humanReadableByteCount(MAX_SIZE_BYTE, true)))
+                    humanReadableByteCount(MAX_SIZE_BYTE.toLong(), true)))
         } else {
-            // Let's see if we can fit this value...
-            Log.d(TAG, String.format("Storing Bitmap (%s)", humanReadableByteCount(value.allocationByteCount.toLong(), true)))
-            while (value.allocationByteCount + totalByteSize > MAX_SIZE_BYTE) {
-                // ... Ok, we remove one value and try again
-                val keyToRemove = lru.removeLast()
-                val bitmapToRemove = indexedBitmaps.remove(keyToRemove)
-                if (bitmapToRemove != null) {
-                    totalByteSize -= bitmapToRemove.allocationByteCount
-                    Log.d(TAG, "Had to remove one bitmap to fit the new one...")
-                }
-            }
-
-            // Add to the cache and update memory count
-            indexedBitmaps[key] = value
-            lru.push(key)
-            totalByteSize += value.allocationByteCount
-            listeners.forEach { it.onBitmapLruCacheChange(indexedBitmaps.size, totalByteSize) }
+            lruCache.put(key, value)
+            listeners.forEach { it.onBitmapLruCacheChange(size, bitmapAllocationByteCount) }
         }
         return value
     }
 
     private fun get(key: String): Bitmap? {
-        val bitmap = indexedBitmaps[key]
-        if (bitmap != null) {
-            lru.remove(key)
-            lru.push(key)
-            Log.d(TAG, String.format("Loaded from cache"))
-        }
-        return bitmap
+        return lruCache.get(key)
     }
 
     fun getOrPut(key: String, defaultValue: () -> Bitmap?): Bitmap? {
@@ -78,31 +58,34 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Long) {
         listeners += listener
     }
 
-    fun removeListener(listener: OnChangeListener) {
+    fun unregisterListener(listener: OnChangeListener) {
         listeners -= listener
     }
 
-    val bitmapAllocationByteCount: Long
-        get() = totalByteSize
+    val bitmapAllocationByteCount: Int
+        get() = lruCache.size()
+
+    val maxBitmapAllocationCount : Int
+        get() = MAX_SIZE_BYTE
 
     val size: Int
-        get() = indexedBitmaps.size
+        get() = lruCache.putCount() - lruCache.evictionCount()
 
     interface OnChangeListener {
-        fun onBitmapLruCacheChange(numBitmap: Int, totalSize: Long)
+        fun onBitmapLruCacheChange(numBitmap: Int, totalSize: Int)
     }
 }
 
 
-private var cache = BitmapLruCache(10 * 1024 * 1024L) // 10Mb
-fun resetCache(MAX_SIZE_BYTE: Long) : BitmapLruCache  {
+private var cache = BitmapLruCache(10 * 1024 * 1024) // 10Mb
+fun resetCache(MAX_SIZE_BYTE: Int): BitmapLruCache {
     cache = BitmapLruCache(MAX_SIZE_BYTE)
     return cache
 }
 
 // Memoization of bitmaps
 class MemoizeBitmap<in T, in U>(private val func: (T, U) -> Bitmap?) : (T, U) -> Bitmap? {
-    override fun invoke(p1: T, p2: U) : Bitmap? {
+    override fun invoke(p1: T, p2: U): Bitmap? {
         val key = String.format("%s_%d_%d", func, p1?.hashCode(), p2?.hashCode())
         Log.d(TAG, String.format("Memoize Bitmap as key %s", key))
         return cache.getOrPut(key, { func(p1, p2) })
