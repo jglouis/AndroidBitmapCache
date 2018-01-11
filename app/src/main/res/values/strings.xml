@@ -16,6 +16,8 @@
     <string name="scale_x2">Scale x2</string>
     <string name="cache_info">Cache Info</string>
     <string name="runtime_heap">Heap: %s / %s</string>
+    <string name="process">Process</string>
+    <string name="system">System</string>
     <plurals name="cache_bitmap_count">
         <item quantity="zero">%d Bitmap in cache</item>
         <item quantity="one">%d Bitmap in cache</item>

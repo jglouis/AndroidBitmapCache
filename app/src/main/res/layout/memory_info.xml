@@ -8,6 +8,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/memory_info"
+        android:textAppearance="@style/TextAppearance.AppCompat.Title"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/system"
         android:textAppearance="@style/TextAppearance.AppCompat.Subhead"/>
 
     <TextView
@@ -31,7 +37,18 @@
         android:layout_height="wrap_content"/>
 
     <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/process"
+        android:textAppearance="@style/TextAppearance.AppCompat.Subhead"/>
+
+    <TextView
         android:id="@+id/heapMemory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/allocatedHeapMemory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 

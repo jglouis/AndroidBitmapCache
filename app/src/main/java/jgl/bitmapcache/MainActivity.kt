@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
                 Log.e(TAG, "Bitmap is null!")
             }
         }
+        updateMemoryInfo()
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -86,6 +87,7 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
                 Log.e(TAG, "Bitmap is null!")
             }
         }
+        updateMemoryInfo()
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -111,8 +113,9 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
         totalMemory.text = String.format(getString(R.string.total_memory_kernel), humanReadableByteCount(outInfo.totalMem, false))
 
         heapMemory.text = String.format(getString(R.string.runtime_heap),
-                humanReadableByteCount(Runtime.getRuntime().totalMemory(), false),
+                humanReadableByteCount(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory(), false),
                 humanReadableByteCount(Runtime.getRuntime().maxMemory(), false))
+        allocatedHeapMemory.text = String.format("Allocated heap: %s", humanReadableByteCount(Runtime.getRuntime().totalMemory(), false))
     }
 
     override fun onTrimMemory(level: Int) {

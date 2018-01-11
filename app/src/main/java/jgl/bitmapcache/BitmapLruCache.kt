@@ -16,6 +16,9 @@ import kotlin.collections.HashSet
 
 const val TAG = "BitmapLruCache"
 
+// Amount of heap to not allocate
+const val MEMORY_SAFETY_THRESHOLD = 1024 * 1024 // 1 MiB
+
 class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
 
     private val lruCache = object : LruCache<String, Bitmap>(MAX_SIZE_BYTE) {
@@ -28,8 +31,8 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
     private fun put(key: String, value: Bitmap): Bitmap {
         if (value.allocationByteCount > MAX_SIZE_BYTE) {
             Log.e(TAG, String.format("Bitmap (%s) does not fit in cache (%s)",
-                    humanReadableByteCount(value.allocationByteCount.toLong(), true),
-                    humanReadableByteCount(MAX_SIZE_BYTE.toLong(), true)))
+                    humanReadableByteCount(value.allocationByteCount.toLong(), false),
+                    humanReadableByteCount(MAX_SIZE_BYTE.toLong(), false)))
         } else {
             lruCache.put(key, value)
             listeners.forEach { it.onBitmapLruCacheChange() }
@@ -65,7 +68,7 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
     val bitmapAllocationByteCount: Int
         get() = lruCache.size()
 
-    val maxBitmapAllocationCount : Int
+    val maxBitmapAllocationCount: Int
         get() = MAX_SIZE_BYTE
 
     val size: Int
@@ -99,15 +102,40 @@ fun Context.getAssetBitmapMem(path: String): Bitmap? {
 fun getAssetBitmap(context: Context, path: String): Bitmap? {
     return try {
         Log.d(TAG, "Loading from assets")
-        context.assets.open(path).toBitmap()
+        context.assets.open(path).toBitmap(Bitmap.Config.ARGB_8888)
     } catch (e: IOException) {
         Log.e("getAssetBitmap", "", e)
         null
     }
 }
 
-fun InputStream.toBitmap(): Bitmap? {
-    return BitmapFactory.decodeStream(this)
+fun InputStream.toBitmap(encoding: Bitmap.Config): Bitmap? {
+    val options = BitmapFactory.Options()
+    options.inJustDecodeBounds = true
+    options.inPreferredConfig = encoding
+    BitmapFactory.decodeStream(this, null, options)
+    val estimatedSize = getBytesPerPixel(encoding) * options.outWidth * options.outHeight
+
+    val rt = Runtime.getRuntime()
+    val availableHeapMemory = rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())
+    Log.d(TAG, "Estimated size " + humanReadableByteCount(estimatedSize.toLong(), false))
+    return if (estimatedSize > availableHeapMemory - MEMORY_SAFETY_THRESHOLD) {
+        if (estimatedSize > availableHeapMemory) {
+            Log.e(TAG, String.format("Bitmap (%s) does not fit in heap (%s)",
+                    humanReadableByteCount(estimatedSize.toLong(), false),
+                    humanReadableByteCount(availableHeapMemory, false)))
+        } else {
+            Log.e(TAG, String.format("Bitmap (%s) does fit in heap (%s) but we keep some safety marge (%s)",
+                    humanReadableByteCount(estimatedSize.toLong(), false),
+                    humanReadableByteCount(availableHeapMemory, false),
+                    humanReadableByteCount(MEMORY_SAFETY_THRESHOLD.toLong(), false)))
+        }
+        null
+    } else {
+        options.inJustDecodeBounds = false
+        this.reset()
+        BitmapFactory.decodeStream(this, null, options)
+    }
 }
 
 fun Bitmap.rotateMem(degrees: Float): Bitmap {
@@ -136,4 +164,17 @@ fun scale(bitmap: Bitmap, scalingFactor: Float): Bitmap {
     tempCanvas.scale(scalingFactor, scalingFactor)
     tempCanvas.drawBitmap(bitmap, 0f, 0f, null)
     return bitmapResult
+}
+
+fun getBytesPerPixel(config: Bitmap.Config): Int {
+    if (config === Bitmap.Config.ARGB_8888) {
+        return 4
+    } else if (config === Bitmap.Config.RGB_565) {
+        return 2
+    } else if (config === Bitmap.Config.ARGB_4444) {
+        return 2
+    } else if (config === Bitmap.Config.ALPHA_8) {
+        return 1
+    }
+    return 1
 }
