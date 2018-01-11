@@ -112,10 +112,10 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
         threshold.text = String.format(getString(R.string.memory_info_threshold), humanReadableByteCount(outInfo.threshold, false))
         totalMemory.text = String.format(getString(R.string.total_memory_kernel), humanReadableByteCount(outInfo.totalMem, false))
 
-        heapMemory.text = String.format(getString(R.string.runtime_heap),
+        heapMemory.text = String.format(getString(R.string.runtime_memory),
                 humanReadableByteCount(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory(), false),
                 humanReadableByteCount(Runtime.getRuntime().maxMemory(), false))
-        allocatedHeapMemory.text = String.format("Allocated heap: %s", humanReadableByteCount(Runtime.getRuntime().totalMemory(), false))
+        allocatedHeapMemory.text = String.format(getString(R.string.runtime_allocated_memory), humanReadableByteCount(Runtime.getRuntime().totalMemory(), false))
     }
 
     override fun onTrimMemory(level: Int) {
