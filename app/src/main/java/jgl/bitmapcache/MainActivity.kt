@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val cache = resetCache((activityManager?.memoryClass?.times(1024*1024/2))?.toLong() ?: 1024 * 1024)
+        val cache = resetCache((activityManager?.memoryClass?.times(1024 * 1024 / 2))?.toLong() ?: 1024 * 1024)
         cache.registerListener(this)
 
         cacheInfoNumElements.text = String.format("%d Bitmap in library", cache.size)
@@ -74,10 +74,12 @@ class MainActivity : AppCompatActivity(), ComponentCallbacks2, BitmapLruCache.On
         imageView.setImageBitmap(bitmap)
     }
 
+    var i = 1
     @Suppress("UNUSED_PARAMETER")
     fun scaleTimes2(view: View) {
-        val bitmap = getAssetBitmapMem(fileName)?.scaleMem(2f)
+        val bitmap = getAssetBitmapMem(fileName)?.scaleMem(2f * i)
         imageView.setImageBitmap(bitmap)
+        i += 1
     }
 
     @Suppress("UNUSED_PARAMETER")

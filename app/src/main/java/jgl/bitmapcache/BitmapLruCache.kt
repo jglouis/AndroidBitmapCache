@@ -18,7 +18,7 @@ const val TAG = "BitmapLruCache"
 
 class BitmapLruCache(private val MAX_SIZE_BYTE: Long) {
 
-    private val indexedBitmaps = HashMap<String, Bitmap?>()
+    private val indexedBitmaps = HashMap<String, Bitmap>()
     private val lru = ArrayDeque<String>()
     private var totalByteSize = 0L
     private val listeners = HashSet<OnChangeListener>()
@@ -31,12 +31,14 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Long) {
                     humanReadableByteCount(MAX_SIZE_BYTE, true)))
         } else {
             // Let's see if we can fit this value...
+            Log.d(TAG, String.format("Storing Bitmap (%s)", humanReadableByteCount(value.allocationByteCount.toLong(), true)))
             while (value.allocationByteCount + totalByteSize > MAX_SIZE_BYTE) {
                 // ... Ok, we remove one value and try again
-                val keyToRemove = lru.pop()
+                val keyToRemove = lru.removeLast()
                 val bitmapToRemove = indexedBitmaps.remove(keyToRemove)
                 if (bitmapToRemove != null) {
                     totalByteSize -= bitmapToRemove.allocationByteCount
+                    Log.d(TAG, "Had to remove one bitmap to fit the new one...")
                 }
             }
 
