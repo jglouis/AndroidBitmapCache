@@ -249,6 +249,7 @@ fun canUseForInBitmap(
         // From Android 4.4 (KitKat) onward we can re-use if the byte size of
         // the new bitmap is smaller than the reusable bitmap candidate
         // allocation byte count.
+        if (targetOptions.inSampleSize == 0) return false // Prevent divide by zero
         val width = targetOptions.outWidth / targetOptions.inSampleSize
         val height = targetOptions.outHeight / targetOptions.inSampleSize
         val byteCount = width * height * getBytesPerPixel(candidate.config)
