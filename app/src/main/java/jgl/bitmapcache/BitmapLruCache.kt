@@ -41,7 +41,7 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
                 oldValue.setIsCached(false)
             } else {
                 if (oldValue != null) {
-                    reusableBitmaps.add(SoftReference<Bitmap>(oldValue.bitmap))
+                    reusableBitmaps.add(SoftReference(oldValue.bitmap))
                 }
             }
         }
@@ -74,6 +74,11 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
         } else {
             value
         }
+    }
+
+    fun trimToSize(maxSize: Int) {
+        lruCache.trimToSize(maxSize)
+        listeners.forEach { it.onBitmapLruCacheChange() }
     }
 
     fun getBitmapFromReusableSet(options: BitmapFactory.Options): Bitmap? {
@@ -155,28 +160,42 @@ fun InputStream.toBitmap(encoding: Bitmap.Config): Bitmap? {
     val rt = Runtime.getRuntime()
     val availableHeapMemory = rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())
     Log.d(TAG, "Estimated size " + humanReadableByteCount(estimatedSize.toLong(), false))
-    return if (estimatedSize > availableHeapMemory - MEMORY_SAFETY_THRESHOLD) {
-        if (estimatedSize > availableHeapMemory) {
-            Log.e(TAG, String.format("Bitmap (%s) does not fit in heap (%s)",
+    when {
+        estimatedSize > rt.maxMemory() - MEMORY_SAFETY_THRESHOLD -> {
+            Log.e(TAG, String.format("Bitmap (%s) does not fit in heap (%s) even if we would trim the cache",
                     humanReadableByteCount(estimatedSize.toLong(), false),
-                    humanReadableByteCount(availableHeapMemory, false)))
-        } else {
-            Log.e(TAG, String.format("Bitmap (%s) does fit in heap (%s) but we keep some safety marge (%s)",
-                    humanReadableByteCount(estimatedSize.toLong(), false),
-                    humanReadableByteCount(availableHeapMemory, false),
-                    humanReadableByteCount(MEMORY_SAFETY_THRESHOLD.toLong(), false)))
+                    humanReadableByteCount(rt.maxMemory(), false)))
+            return null
         }
-        null
-    } else {
-        options.inJustDecodeBounds = false
-        options.inMutable = true
-        this.reset()
-        cache.getBitmapFromReusableSet(options).let {
-            options.inBitmap = it
-            Log.d(TAG, "Reusing an evicted bitmap")
+        estimatedSize > availableHeapMemory - MEMORY_SAFETY_THRESHOLD -> {
+            // Trying to trim the cache first
+            val sizeOfCacheAfterTrim = cache.maxBitmapAllocationCount - estimatedSize - MEMORY_SAFETY_THRESHOLD
+            when {
+                sizeOfCacheAfterTrim > 0 -> cache.trimToSize(sizeOfCacheAfterTrim) // Trim the cache
+                estimatedSize > availableHeapMemory -> {
+                    Log.e(TAG, String.format("Bitmap (%s) does not fit in heap (%s available)",
+                            humanReadableByteCount(estimatedSize.toLong(), false),
+                            humanReadableByteCount(availableHeapMemory, false)))
+                    return null
+                }
+                else -> {
+                    Log.e(TAG, String.format("Bitmap (%s) does fit in heap (%s available) but we keep some safety marge (%s)",
+                            humanReadableByteCount(estimatedSize.toLong(), false),
+                            humanReadableByteCount(availableHeapMemory, false),
+                            humanReadableByteCount(MEMORY_SAFETY_THRESHOLD.toLong(), false)))
+                    return null
+                }
+            }
         }
-        BitmapFactory.decodeStream(this, null, options)
     }
+    options.inJustDecodeBounds = false
+    options.inMutable = true
+    this.reset()
+    cache.getBitmapFromReusableSet(options).let {
+        options.inBitmap = it
+        Log.d(TAG, "Reusing an evicted bitmap")
+    }
+    return BitmapFactory.decodeStream(this, null, options)
 }
 
 fun Bitmap.rotateMem(degrees: Float): Bitmap {
