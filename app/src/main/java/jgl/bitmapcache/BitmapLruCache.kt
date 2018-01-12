@@ -200,8 +200,8 @@ fun InputStream.toBitmap(encoding: Bitmap.Config): Bitmap? {
     } else null
 }
 
-fun Bitmap.rotateMem(degrees: Float): Bitmap {
-    return MemoizeBitmap(::rotate)(this, degrees)!!
+fun Bitmap.rotateMem(degrees: Float): Bitmap? {
+    return MemoizeBitmap(::rotate)(this, degrees)
 }
 
 fun rotate(bitmap: Bitmap, degrees: Float): Bitmap? {
@@ -217,8 +217,8 @@ fun rotate(bitmap: Bitmap, degrees: Float): Bitmap? {
     } else null
 }
 
-fun Bitmap.scaleMem(scalingFactor: Float): Bitmap {
-    return MemoizeBitmap(::scale)(this, scalingFactor)!!
+fun Bitmap.scaleMem(scalingFactor: Float): Bitmap? {
+    return MemoizeBitmap(::scale)(this, scalingFactor)
 }
 
 fun scale(bitmap: Bitmap, scalingFactor: Float): Bitmap? {
