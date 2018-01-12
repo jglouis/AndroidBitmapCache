@@ -33,7 +33,7 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
 
     private val lruCache = object : LruCache<String, BitmapDrawable>(MAX_SIZE_BYTE) {
         override fun sizeOf(key: String?, value: BitmapDrawable?): Int {
-            return value?.bitmap?.allocationByteCount ?: 0
+            return value?.bitmap?.allocationByteCountSupport ?: 0
         }
 
         override fun entryRemoved(evicted: Boolean, key: String?, oldValue: BitmapDrawable?, newValue: BitmapDrawable?) {
@@ -48,9 +48,9 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
     }
 
     private fun put(key: String, value: Bitmap): Bitmap {
-        if (value.allocationByteCount > MAX_SIZE_BYTE) {
+        if (value.allocationByteCountSupport > MAX_SIZE_BYTE) {
             Log.e(TAG, String.format("Bitmap (%s) does not fit in cache (%s)",
-                    humanReadableByteCount(value.allocationByteCount.toLong(), false),
+                    humanReadableByteCount(value.allocationByteCountSupport.toLong(), false),
                     humanReadableByteCount(MAX_SIZE_BYTE.toLong(), false)))
         } else {
             lruCache.put(key, BitmapDrawable(value))

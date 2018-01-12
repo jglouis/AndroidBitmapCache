@@ -1,6 +1,8 @@
 package jgl.bitmapcache
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.os.Build
 import android.widget.Toast
 
 /**
@@ -18,3 +20,12 @@ fun humanReadableByteCount(bytes: Long, si: Boolean): String {
 fun Context.toast(msg: String, isShort: Boolean = true) {
     Toast.makeText(this, msg, if (isShort) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
 }
+
+// Bitmap#allocationBytecount does not exist before 4.2
+val Bitmap.allocationByteCountSupport : Int
+    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        this.allocationByteCount
+    } else {
+        this.byteCount
+    }
+
