@@ -76,11 +76,6 @@ class BitmapLruCache(private val MAX_SIZE_BYTE: Int) {
         }
     }
 
-    fun trimToSize(maxSize: Int) {
-        lruCache.trimToSize(maxSize)
-        listeners.forEach { it.onBitmapLruCacheChange() }
-    }
-
     fun getBitmapFromReusableSet(options: BitmapFactory.Options): Bitmap? {
         var bitmap: Bitmap? = null
         synchronized(reusableBitmaps) {
@@ -150,80 +145,91 @@ fun getAssetBitmap(context: Context, path: String): Bitmap? {
     }
 }
 
-fun InputStream.toBitmap(encoding: Bitmap.Config): Bitmap? {
-    val options = BitmapFactory.Options()
-    options.inJustDecodeBounds = true
-    options.inPreferredConfig = encoding
-    BitmapFactory.decodeStream(this, null, options)
-    val estimatedSize = getBytesPerPixel(encoding) * options.outWidth * options.outHeight
-
+fun getAvailableHeapMemory() : Long {
     val rt = Runtime.getRuntime()
-    val availableHeapMemory = rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())
+    return rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())
+}
+
+fun checkHeapSpace(estimatedSize: Int): Boolean {
+    val rt = Runtime.getRuntime()
     Log.d(TAG, "Estimated size " + humanReadableByteCount(estimatedSize.toLong(), false))
-    when {
+    return when {
         estimatedSize > rt.maxMemory() - MEMORY_SAFETY_THRESHOLD -> {
             Log.e(TAG, String.format("Bitmap (%s) does not fit in heap (%s) even if we would trim the cache",
                     humanReadableByteCount(estimatedSize.toLong(), false),
                     humanReadableByteCount(rt.maxMemory(), false)))
-            return null
+            false
         }
-        estimatedSize > availableHeapMemory - MEMORY_SAFETY_THRESHOLD -> {
-            // Trying to trim the cache first
-            val sizeOfCacheAfterTrim = cache.maxBitmapAllocationCount - estimatedSize - MEMORY_SAFETY_THRESHOLD
+        estimatedSize > getAvailableHeapMemory() - MEMORY_SAFETY_THRESHOLD -> {
+            val availableHeapMemory = getAvailableHeapMemory()
             when {
-                sizeOfCacheAfterTrim > 0 -> cache.trimToSize(sizeOfCacheAfterTrim) // Trim the cache
                 estimatedSize > availableHeapMemory -> {
                     Log.e(TAG, String.format("Bitmap (%s) does not fit in heap (%s available)",
                             humanReadableByteCount(estimatedSize.toLong(), false),
                             humanReadableByteCount(availableHeapMemory, false)))
-                    return null
+                    false
                 }
                 else -> {
                     Log.e(TAG, String.format("Bitmap (%s) does fit in heap (%s available) but we keep some safety marge (%s)",
                             humanReadableByteCount(estimatedSize.toLong(), false),
                             humanReadableByteCount(availableHeapMemory, false),
                             humanReadableByteCount(MEMORY_SAFETY_THRESHOLD.toLong(), false)))
-                    return null
+                    false
                 }
             }
         }
+        else -> true
     }
-    options.inJustDecodeBounds = false
-    options.inMutable = true
-    this.reset()
-    cache.getBitmapFromReusableSet(options).let {
-        options.inBitmap = it
-        Log.d(TAG, "Reusing an evicted bitmap")
-    }
-    return BitmapFactory.decodeStream(this, null, options)
+}
+
+fun InputStream.toBitmap(encoding: Bitmap.Config): Bitmap? {
+    val options = BitmapFactory.Options()
+    options.inJustDecodeBounds = true
+    options.inPreferredConfig = encoding
+    BitmapFactory.decodeStream(this, null, options)
+    val estimatedSize = getBytesPerPixel(encoding) * options.outWidth * options.outHeight
+    return if (checkHeapSpace(estimatedSize)) {
+        options.inJustDecodeBounds = false
+        options.inMutable = true
+        this.reset()
+        cache.getBitmapFromReusableSet(options).let {
+            options.inBitmap = it
+            Log.d(TAG, "Reusing an evicted bitmap")
+        }
+        BitmapFactory.decodeStream(this, null, options)
+    } else null
 }
 
 fun Bitmap.rotateMem(degrees: Float): Bitmap {
     return MemoizeBitmap(::rotate)(this, degrees)!!
 }
 
-fun rotate(bitmap: Bitmap, degrees: Float): Bitmap {
+fun rotate(bitmap: Bitmap, degrees: Float): Bitmap? {
     Log.d(TAG, "rotate")
-    val bitmapResult = Bitmap.createBitmap(bitmap.height, bitmap.width, Bitmap.Config.ARGB_8888)
-    val tempCanvas = Canvas(bitmapResult)
-    val pivotX = bitmap.width / 2f
-    val pivotY = bitmap.height / 2f
-    tempCanvas.rotate(degrees, pivotX, pivotY)
-    tempCanvas.drawBitmap(bitmap, 0f, 0f, null)
-    return bitmapResult
+    return if (checkHeapSpace(bitmap.allocationByteCountSupport)) {
+        val bitmapResult = Bitmap.createBitmap(bitmap.height, bitmap.width, Bitmap.Config.ARGB_8888)
+        val tempCanvas = Canvas(bitmapResult)
+        val pivotX = bitmap.width / 2f
+        val pivotY = bitmap.height / 2f
+        tempCanvas.rotate(degrees, pivotX, pivotY)
+        tempCanvas.drawBitmap(bitmap, 0f, 0f, null)
+        bitmapResult
+    } else null
 }
 
 fun Bitmap.scaleMem(scalingFactor: Float): Bitmap {
     return MemoizeBitmap(::scale)(this, scalingFactor)!!
 }
 
-fun scale(bitmap: Bitmap, scalingFactor: Float): Bitmap {
+fun scale(bitmap: Bitmap, scalingFactor: Float): Bitmap? {
     Log.d(TAG, "scale")
-    val bitmapResult = Bitmap.createBitmap(bitmap.height, bitmap.width, Bitmap.Config.ARGB_8888)
-    val tempCanvas = Canvas(bitmapResult)
-    tempCanvas.scale(scalingFactor, scalingFactor)
-    tempCanvas.drawBitmap(bitmap, 0f, 0f, null)
-    return bitmapResult
+    return if (checkHeapSpace(bitmap.allocationByteCountSupport)) {
+        val bitmapResult = Bitmap.createBitmap(bitmap.height, bitmap.width, Bitmap.Config.ARGB_8888)
+        val tempCanvas = Canvas(bitmapResult)
+        tempCanvas.scale(scalingFactor, scalingFactor)
+        tempCanvas.drawBitmap(bitmap, 0f, 0f, null)
+        bitmapResult
+    } else null
 }
 
 fun getBytesPerPixel(config: Bitmap.Config): Int {

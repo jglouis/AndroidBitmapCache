@@ -28,4 +28,3 @@ val Bitmap.allocationByteCountSupport : Int
     } else {
         this.byteCount
     }
-
